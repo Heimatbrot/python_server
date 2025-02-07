@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
+    <title>Heimatbrot</title>
+    <link rel="stylesheet" href="index.css">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
     <div id="chat">
-        <input type="text" id="username" placeholder="Enter your username">
-        <input type="text" id="room" placeholder="Enter room name">
-        <button onclick="joinRoom()">Join Room</button>
-        <input type="text" id="message" placeholder="Type a message...">
-        <button onclick="sendMessage()">Send</button>
+        <input type="text" id="username" class="joinLobby" placeholder="Enter your username">
+        <input type="text" id="room" class="joinLobby" placeholder="Enter room name">
+        <button onclick="joinRoom()" class="joinLobby">Join Room</button>
+        <button onclick="leaveRoom()" class="inLobby" style="display: none;">Leave Room</button>
+        <input type="text" id="message" class="inLobby" style="display: none;" placeholder="Type a message...">
+        <button onclick="sendMessage()" class="inLobby" style="display: none;">Send</button>
         <div id="messages"></div>
     </div>
 
@@ -23,18 +25,43 @@
             var username = document.getElementById('username').value;
             var room = document.getElementById('room').value;
             socket.emit('join', { username: username, room: room });
+            
+            var joinLobbyElements = document.getElementsByClassName('joinLobby');
+            for (var i = 0; i < joinLobbyElements.length; i++) {
+                joinLobbyElements[i].style.display = 'none';
+            }
+            var inLobbyElements = document.getElementsByClassName('inLobby');
+            for (var i = 0; i < inLobbyElements.length; i++) {
+                inLobbyElements[i].style.display = 'inline';
+            }
+        }
+
+        function leaveRoom() {
+            var username = document.getElementById('username').value;
+            var room = document.getElementById('room').value;
+            socket.emit('leave', { username: username, room: room });
+
+            var joinLobbyElements = document.getElementsByClassName('joinLobby');
+            for (var i = 0; i < joinLobbyElements.length; i++) {
+                joinLobbyElements[i].style.display = 'inline';
+            }
+            var inLobbyElements = document.getElementsByClassName('inLobby');
+            for (var i = 0; i < inLobbyElements.length; i++) {
+                inLobbyElements[i].style.display = 'none';
+            }
         }
 
         function sendMessage() {
             var room = document.getElementById('room').value;
             var message = document.getElementById('message').value;
-            socket.emit('message', { room: room, text: message });
+            var username = document.getElementById('username').value;
+            socket.emit('message', { room: room, text: message, username: username });
         }
 
         socket.on('message', function(msg) {
             var messages = document.getElementById('messages');
             var messageElement = document.createElement('div');
-            messageElement.textContent = msg;
+            messageElement.textContent = msg.username + ': ' + msg.text;
             messages.appendChild(messageElement);
         });
     </script>

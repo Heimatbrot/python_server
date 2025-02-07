@@ -14,19 +14,23 @@ def index():
 def handle_join(data):
     room = data['room']
     join_room(room)
-    send(f"{data['username']} has joined the room {room}", to=room)
+    send({'text': f"{data['username']} has joined the room {room}", 'username': 'INFO'}, to=room)
 
 @socketio.on('leave')
 def handle_leave(data):
     room = data['room']
     leave_room(room)
-    send(f"{data['username']} has left the room {room}", to=room)
+    send({'text': f"{data['username']} has left the room {room}", 'username': 'INFO'}, to=room)
 
 @socketio.on('message')
 def handle_message(msg):
     room = msg['room']
-    send(msg['text'], to=room)
+    send({'text': msg['text'], 'username': msg['username']}, to=room)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    socketio.run(app, host='0.0.0.0', port=port, debug=True)
+    env = os.environ.get('ENV', 'production')
+    if env == 'local':
+        socketio.run(app, host='127.0.0.1', port=port, debug=True)
+    else:
+        socketio.run(app, host='0.0.0.0', port=port)
