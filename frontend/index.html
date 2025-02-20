@@ -4,52 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heimatbrot</title>
-    <link rel="stylesheet" href="index.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
 <body>
-    <div id="chat">
-        <input type="text" id="username" class="joinLobby" placeholder="Enter your username">
-        <input type="text" id="room" class="joinLobby" placeholder="Enter room name">
-        <button onclick="joinRoom()" class="joinLobby">Join Room</button>
-        <button onclick="leaveRoom()" class="inLobby" style="display: none;">Leave Room</button>
-        <input type="text" id="message" class="inLobby" style="display: none;" placeholder="Type a message...">
-        <button onclick="sendMessage()" class="inLobby" style="display: none;">Send</button>
-        <div id="messages"></div>
+    <h1>MemeBattle 2.0</h1>
+    <div id="loginForm">
+        <div class="box">
+            <h2>Create Room</h2>
+            <input type="text" id="usernameCreate" placeholder="Username" oninput="validateInputs()">
+            <button id="createButton" onclick="createRoom()" disabled>Create</button>
+        </div>
+        <br>
+        <div class="box">
+            <h2>Join Room</h2>
+            <h3 id="notFound" style="display: none;">room not found!</h3>
+            <input type="text" id="usernameJoin" placeholder="Username" oninput="validateInputs()">
+            <input type="text" id="room" placeholder="Room-ID" oninput="validateInputs()">
+            <button id="joinButton" onclick="joinRoom()" style="width: 100px" disabled>Join</button>    
+        </div>
     </div>
 
     <script>
         var socket = io();
 
+        function validateInputs() {
+            // input for join
+            var usernameJoin = document.getElementById('usernameJoin').value;
+            var roomJoin = document.getElementById('room').value;
+            var joinButton = document.getElementById('joinButton');
+
+            var roomPattern = /^\d{4}$/; // Regular expression to match exactly 4 digits
+            document.getElementById('notFound').style.display = 'none';
+
+            if (usernameJoin && roomPattern.test(roomJoin)) {
+                joinButton.disabled = false;
+            } else {
+                joinButton.disabled = true;
+            }
+            // input for create
+            var usernameCreate = document.getElementById('usernameCreate').value;
+            var createButton = document.getElementById('createButton');
+
+            if (usernameCreate) {
+                createButton.disabled = false;
+            } else {
+                createButton.disabled = true;
+            }
+        }
+
+        function createRoom() {
+            var username = document.getElementById('usernameCreate').value;
+            socket.emit('createRoom', {username: username});
+        }
+
         function joinRoom() {
-            var username = document.getElementById('username').value;
+            var username = document.getElementById('usernameJoin').value;
             var room = document.getElementById('room').value;
-            socket.emit('join', { username: username, room: room });
-            
-            var joinLobbyElements = document.getElementsByClassName('joinLobby');
-            for (var i = 0; i < joinLobbyElements.length; i++) {
-                joinLobbyElements[i].style.display = 'none';
-            }
-            var inLobbyElements = document.getElementsByClassName('inLobby');
-            for (var i = 0; i < inLobbyElements.length; i++) {
-                inLobbyElements[i].style.display = 'inline';
-            }
+            socket.emit('joinRoom', {room: room, username: username });
         }
 
-        function leaveRoom() {
-            var username = document.getElementById('username').value;
-            var room = document.getElementById('room').value;
-            socket.emit('leave', { username: username, room: room });
+        socket.on('roomNotFound', function() {
+            document.getElementById('notFound').style.display = 'block';
+        });
 
-            var joinLobbyElements = document.getElementsByClassName('joinLobby');
-            for (var i = 0; i < joinLobbyElements.length; i++) {
-                joinLobbyElements[i].style.display = 'inline';
-            }
-            var inLobbyElements = document.getElementsByClassName('inLobby');
-            for (var i = 0; i < inLobbyElements.length; i++) {
-                inLobbyElements[i].style.display = 'none';
-            }
-        }
+        socket.on('roomJoined', function(data) {
+            localStorage.setItem('room', data.room);
+            localStorage.setItem('username', data.username);
+            window.location.href = '/lobby';
+        });
 
         function sendMessage() {
             var room = document.getElementById('room').value;
@@ -58,12 +81,6 @@
             socket.emit('message', { room: room, text: message, username: username });
         }
 
-        socket.on('message', function(msg) {
-            var messages = document.getElementById('messages');
-            var messageElement = document.createElement('div');
-            messageElement.textContent = msg.username + ': ' + msg.text;
-            messages.appendChild(messageElement);
-        });
     </script>
 </body>
 </html>

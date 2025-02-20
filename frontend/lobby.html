@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heimatbrot</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lobby.css') }}">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Lobby</h1>
+    <div class="box">
+        <h2>Current Room</h2>
+        <h3 id="username">Playing as: NOT AVAILABLE</h3>
+        <h3 id="roomID">Room ID: NOT AVAILABLE</h3>
+        <h3 id="players">Total Players: NOT AVAILABLE</h3>
+        <button onclick=leaveRoom()>Leave Room</button>
+    </div>
+
+    <script>
+        var socket = io();
+
+        window.onload = function() {
+            var room = localStorage.getItem('room');
+            var username = localStorage.getItem('username');
+            document.getElementById('roomID').innerText = 'Room ID: ' + room;
+            document.getElementById('username').innerText = 'Playing as: ' + username;
+        }
+
+        function leaveRoom() {
+            var username = localStorage.getItem('username');
+            var room = localStorage.getItem('room');
+            socket.emit('leaveRoom', {username: username, room: room});
+            localStorage.removeItem('username');
+            localStorage.removeItem('room');
+            window.location.href = '/';
+        }
+
+        function joinRoom() {
+            var username = document.getElementById('usernameJoin').value;
+            var room = document.getElementById('room').value;
+            socket.emit('joinRoom', {room: room, username: username });
+        }
+
+        socket.on('roomJoined', function(data) {
+            localStorage.setItem('room', data.room);
+            localStorage.setItem('username', data.username);
+            window.location.href = '/lobby';
+        });
+
+        socket.on('players', function(data) {
+            console.log(data.players);
+            document.getElementById('players').innerText = 'Total Players: ' + data.players;
+        });
+
+        function sendMessage() {
+            var room = document.getElementById('room').value;
+            var message = document.getElementById('message').value;
+            var username = document.getElementById('username').value;
+            socket.emit('message', { room: room, text: message, username: username });
+        }
+
+    </script>
+</body>
+</html>
