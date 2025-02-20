@@ -35,7 +35,7 @@ def handle_joinRoom(data):
     rooms[room] += 1
     join_room(room)
     socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
-    time.sleep(0.5)
+    time.sleep(1)
     socketio.emit('players', {'players': rooms[room]})
     
 @socketio.on('createRoom')
@@ -44,7 +44,7 @@ def handle_createRoom(data):
     room = generate_unique_room_id()
     join_room(room)
     socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
-    time.sleep(0.5)
+    time.sleep(1)
     socketio.emit('players', {'players': rooms[room]})
 
 @socketio.on('leaveRoom')
