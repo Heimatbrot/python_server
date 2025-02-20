@@ -9,6 +9,7 @@ app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app)
 
 rooms = {}
+roomsReady = {}
 
 @app.route('/')
 def index():
@@ -18,11 +19,16 @@ def index():
 def lobby():
     return render_template('lobby.html')
 
+@app.route('/createMeme')
+def createMeme():
+    return render_template('createMeme.html')
+
 def generate_unique_room_id():
     while True:
         room_id = str(random.randint(1000, 9999))
         if room_id not in rooms:
             rooms[room_id] = 1
+            roomsReady[room_id] = 0
             return room_id
 
 @socketio.on('joinRoom')
@@ -36,7 +42,7 @@ def handle_joinRoom(data):
     join_room(room)
     socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
     time.sleep(1)
-    socketio.emit('players', {'players': rooms[room]})
+    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
     
 @socketio.on('createRoom')
 def handle_createRoom(data):
@@ -45,7 +51,26 @@ def handle_createRoom(data):
     join_room(room)
     socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
     time.sleep(1)
-    socketio.emit('players', {'players': rooms[room]})
+    socketio.emit('players', {'players': rooms[room],'readyPlayers': roomsReady.get(room, 0)})
+
+@socketio.on('setReady')
+def handle_startGame(data):
+    room = data['room']
+    roomsReady[room] += 1
+    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
+    print(roomsReady[room] == rooms[room] and rooms[room] > 2)
+    if roomsReady[room] == rooms[room] and rooms[room] > 2:
+        socketio.emit('startGame')
+        roomsReady[room] = 0
+
+@socketio.on('removeReady')
+def handle_removeReady(data):
+    room = data['room']
+    roomsReady[room] -= 1
+    if roomsReady[room] < 0:
+        roomsReady[room] = 0
+    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
+
 
 @socketio.on('leaveRoom')
 def handle_leaveRoom(data):
@@ -53,7 +78,7 @@ def handle_leaveRoom(data):
     room = data['room']
     rooms[room] -= 1
     leave_room(room)
-    socketio.emit('players', {'players': rooms[room]})
+    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
     socketio.emit('roomLeft', {'room': room, 'username': username}, room=request.sid)
     if rooms[room] <= 0:
         del rooms[room]

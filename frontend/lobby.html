@@ -14,11 +14,35 @@
         <h3 id="username">Playing as: NOT AVAILABLE</h3>
         <h3 id="roomID">Room ID: NOT AVAILABLE</h3>
         <h3 id="players">Total Players: NOT AVAILABLE</h3>
+        <h3 id="readyPlayers">Ready: NOT AVAILABLE</h3>
         <button onclick=leaveRoom()>Leave Room</button>
+        <button id="readyButton" onclick=setReady()>set ready</button>
     </div>
 
     <script>
         var socket = io();
+
+        var ready = false;
+        document.addEventListener('DOMContentLoaded', (event) => {
+            var ready = false; // Your variable
+
+            var button = document.getElementById('readyButton');
+            if (!ready) {
+                button.classList.add('readyButton');
+            } else {
+                button.classList.remove('readyButton');
+            }
+
+            // Optionally, you can add an event listener to toggle the ready state
+            button.addEventListener('click', () => {
+                ready = !ready;
+                if (!ready) {
+                    button.classList.add('readyButton');
+                } else {
+                    button.classList.remove('readyButton');
+                }
+            });
+        });
 
         window.onload = function() {
             var room = localStorage.getItem('room');
@@ -30,6 +54,10 @@
         function leaveRoom() {
             var username = localStorage.getItem('username');
             var room = localStorage.getItem('room');
+            if (ready) {
+                var room = localStorage.getItem('room');
+                socket.emit('removeReady', {room: room});
+            }
             socket.emit('leaveRoom', {username: username, room: room});
             localStorage.removeItem('username');
             localStorage.removeItem('room');
@@ -49,15 +77,26 @@
         });
 
         socket.on('players', function(data) {
-            console.log(data.players);
-            document.getElementById('players').innerText = 'Total Players: ' + data.players;
+            document.getElementById('players').innerText = 'Total Players: ' + data.players + ' (MIN 3)';
+            document.getElementById('readyPlayers').innerText = 'Ready: ' + data.readyPlayers + ' of ' + data.players;
         });
 
-        function sendMessage() {
-            var room = document.getElementById('room').value;
-            var message = document.getElementById('message').value;
-            var username = document.getElementById('username').value;
-            socket.emit('message', { room: room, text: message, username: username });
+        socket.on('startGame', function() {
+            ready = false;
+            window.location.href = '/createMeme';
+        });
+
+        function setReady() {
+            var room = localStorage.getItem('room');
+            if (ready) {
+                ready = false
+                socket.emit('removeReady', {room: room});
+                document.getElementById('readyButton').innerText = 'set ready';
+            } else {
+                ready = true
+                socket.emit('setReady', {room: room});
+                document.getElementById('readyButton').innerText = 'remove ready';
+            }
         }
 
     </script>

@@ -74,13 +74,6 @@
             window.location.href = '/lobby';
         });
 
-        function sendMessage() {
-            var room = document.getElementById('room').value;
-            var message = document.getElementById('message').value;
-            var username = document.getElementById('username').value;
-            socket.emit('message', { room: room, text: message, username: username });
-        }
-
     </script>
 </body>
 </html>
