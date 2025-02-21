@@ -14,3 +14,14 @@
 .readyButton:hover {
     background-color: rgb(236, 129, 129);
 }
+
+.playersListElement {
+    display: inline-block;
+    background-color: #ffffff;
+    border-radius: 15px;
+    padding: 5px 10px;
+    margin: 5px;
+    font-size: 16px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    border: 1px solid #000000;
+}

@@ -15,90 +15,53 @@
         <h3 id="roomID">Room ID: NOT AVAILABLE</h3>
         <h3 id="players">Total Players: NOT AVAILABLE</h3>
         <h3 id="readyPlayers">Ready: NOT AVAILABLE</h3>
+        <div id="playersList">
+            
+        </div>
         <button onclick=leaveRoom()>Leave Room</button>
         <button id="readyButton" onclick=setReady()>set ready</button>
     </div>
 
     <script>
         var socket = io();
+        
+        // ASK FOR UDPATE ON LOAD
+        window.onload = function() {
+            let room = localStorage.getItem('room');
+            socket.emit('askUpdateRoom', {'room': room});
+        }
 
-        var ready = false;
-        document.addEventListener('DOMContentLoaded', (event) => {
-            var ready = false; // Your variable
+        // UPDATE ROOM
+        socket.on('updateRoom', (data) => {
+            room = data.room;
+            roomsReady = data.roomsReady;
+            playerCount = roomsReady.length;
+            readyCount = roomsReady.filter(player => player.ready).length;
 
-            var button = document.getElementById('readyButton');
-            if (!ready) {
-                button.classList.add('readyButton');
-            } else {
-                button.classList.remove('readyButton');
-            }
+            document.getElementById('username').innerText = `Playing as: ${localStorage.getItem('username')}`;
+            document.getElementById('roomID').innerText = `Room ID: ${localStorage.getItem('room')}`;
+            document.getElementById('players').innerText = `Total Players: ${playerCount} (min 3)`;
+            document.getElementById('readyPlayers').innerText = `Ready: ${readyCount} / ${playerCount}`;
 
-            // Optionally, you can add an event listener to toggle the ready state
-            button.addEventListener('click', () => {
-                ready = !ready;
-                if (!ready) {
-                    button.classList.add('readyButton');
-                } else {
-                    button.classList.remove('readyButton');
-                }
+            var playersListDiv = document.getElementById('playersList');
+            playersListDiv.innerHTML = ''; // Clear the existing content
+            roomsReady.forEach(function(player) {
+                var p = document.createElement('p');
+                p.className = 'playersListElement';
+                p.textContent = player.username;
+                playersListDiv.appendChild(p);
             });
         });
 
-        window.onload = function() {
-            var room = localStorage.getItem('room');
-            var username = localStorage.getItem('username');
-            document.getElementById('roomID').innerText = 'Room ID: ' + room;
-            document.getElementById('username').innerText = 'Playing as: ' + username;
-        }
-
+        // LEAVE ROOM
         function leaveRoom() {
-            var username = localStorage.getItem('username');
-            var room = localStorage.getItem('room');
-            if (ready) {
-                var room = localStorage.getItem('room');
-                socket.emit('removeReady', {room: room});
-            }
-            socket.emit('leaveRoom', {username: username, room: room});
-            localStorage.removeItem('username');
+            let room = localStorage.getItem('room');
+            let username = localStorage.getItem('username');
+            socket.emit('leaveRoom', {'room': room, 'username': username});
             localStorage.removeItem('room');
+            localStorage.removeItem('username');
             window.location.href = '/';
         }
-
-        function joinRoom() {
-            var username = document.getElementById('usernameJoin').value;
-            var room = document.getElementById('room').value;
-            socket.emit('joinRoom', {room: room, username: username });
-        }
-
-        socket.on('roomJoined', function(data) {
-            localStorage.setItem('room', data.room);
-            localStorage.setItem('username', data.username);
-            window.location.href = '/lobby';
-        });
-
-        socket.on('players', function(data) {
-            document.getElementById('players').innerText = 'Total Players: ' + data.players + ' (MIN 3)';
-            document.getElementById('readyPlayers').innerText = 'Ready: ' + data.readyPlayers + ' of ' + data.players;
-        });
-
-        socket.on('startGame', function() {
-            ready = false;
-            window.location.href = '/createMeme';
-        });
-
-        function setReady() {
-            var room = localStorage.getItem('room');
-            if (ready) {
-                ready = false
-                socket.emit('removeReady', {room: room});
-                document.getElementById('readyButton').innerText = 'set ready';
-            } else {
-                ready = true
-                socket.emit('setReady', {room: room});
-                document.getElementById('readyButton').innerText = 'remove ready';
-            }
-        }
-
     </script>
 </body>
 </html>

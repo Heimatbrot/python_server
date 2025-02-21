@@ -1,15 +1,12 @@
 import os
 import random
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, join_room, leave_room, send
+from flask_socketio import SocketIO, join_room, leave_room
 import time
 
 app = Flask(__name__, template_folder='frontend')
 app.config['SECRET_KEY'] = 'your_secret_key'
 socketio = SocketIO(app)
-
-rooms = {}
-roomsReady = {}
 
 @app.route('/')
 def index():
@@ -23,67 +20,64 @@ def lobby():
 def createMeme():
     return render_template('createMeme.html')
 
+## ROOM VARIABLES
+roomsReady = {} # {'8241': [{'username': 'fdsa', 'ready': False}], '2882': []}
+
+## CREATE ROOM
 def generate_unique_room_id():
     while True:
         room_id = str(random.randint(1000, 9999))
-        if room_id not in rooms:
-            rooms[room_id] = 1
-            roomsReady[room_id] = 0
+        if room_id not in roomsReady:
+            roomsReady[room_id] = []
             return room_id
+        
+@socketio.on('createRoom')
+def createRoom(data):
+    room = generate_unique_room_id()
+    username = data['username']
+    roomsReady[room].append({'username': username, 'ready': False})
+    join_room(room)
+    socketio.emit('joinedRoom', {'room': room, 'username': username}, to=request.sid)
+
+## JOIN ROOM
+# check if username is taken
+def is_username_taken(username, room):
+    for user in roomsReady[room]:
+        if user['username'] == username:
+            return True
+    return False
 
 @socketio.on('joinRoom')
-def handle_joinRoom(data):
-    username = data['username']
+def joinRoom(data):
     room = data['room']
-    if room not in rooms:
-        socketio.emit('roomNotFound', {'room': room})
+    username = data['username']
+    if room not in roomsReady:
+        socketio.emit('roomError', {'room': room, 'error': 'Room not found!'}, to=request.sid)
         return
-    rooms[room] += 1
+    if is_username_taken(username, room):
+        socketio.emit('roomError', {'room': room, 'error': 'Username already taken!'}, to=request.sid)
+        return
+    roomsReady[room].append({'username': username, 'ready': False})
     join_room(room)
-    socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
-    time.sleep(1)
-    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
-    
-@socketio.on('createRoom')
-def handle_createRoom(data):
-    username = data['username']
-    room = generate_unique_room_id()
-    join_room(room)
-    socketio.emit('roomJoined', {'room': room, 'username': username}, room=request.sid)
-    time.sleep(1)
-    socketio.emit('players', {'players': rooms[room],'readyPlayers': roomsReady.get(room, 0)})
+    socketio.emit('joinedRoom', {'room': room, 'username': username}, to=request.sid)
+    socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]},to=room)
 
-@socketio.on('setReady')
-def handle_startGame(data):
+## ASK UPDATE ROOM
+@socketio.on('askUpdateRoom')
+def askUpdateRoom(data):
+    print(data)
+    join_room(data['room'])
     room = data['room']
-    roomsReady[room] += 1
-    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
-    print(roomsReady[room] == rooms[room] and rooms[room] > 2)
-    if roomsReady[room] == rooms[room] and rooms[room] > 2:
-        socketio.emit('startGame')
-        roomsReady[room] = 0
+    socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]}, to=room)
 
-@socketio.on('removeReady')
-def handle_removeReady(data):
-    room = data['room']
-    roomsReady[room] -= 1
-    if roomsReady[room] < 0:
-        roomsReady[room] = 0
-    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
-
-
+## LEAVE ROOM CHECK TO DELETE
 @socketio.on('leaveRoom')
-def handle_leaveRoom(data):
-    username = data['username']
+def leaveRoom(data):
     room = data['room']
-    rooms[room] -= 1
+    username = data['username']
+    roomsReady[room] = [player for player in roomsReady[room] if player['username'] != username]
+    socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]}, to=room)
     leave_room(room)
-    socketio.emit('players', {'players': rooms[room], 'readyPlayers': roomsReady.get(room, 0)})
-    socketio.emit('roomLeft', {'room': room, 'username': username}, room=request.sid)
-    if rooms[room] <= 0:
-        del rooms[room]
-
-
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

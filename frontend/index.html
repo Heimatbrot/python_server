@@ -52,26 +52,33 @@
                 createButton.disabled = true;
             }
         }
-
+        
+        // CREATE ROOM
         function createRoom() {
             var username = document.getElementById('usernameCreate').value;
             socket.emit('createRoom', {username: username});
         }
-
+        
+        // JOIN ROOM
         function joinRoom() {
             var username = document.getElementById('usernameJoin').value;
             var room = document.getElementById('room').value;
             socket.emit('joinRoom', {room: room, username: username });
         }
-
-        socket.on('roomNotFound', function() {
-            document.getElementById('notFound').style.display = 'block';
-        });
-
-        socket.on('roomJoined', function(data) {
-            localStorage.setItem('room', data.room);
-            localStorage.setItem('username', data.username);
+        
+        // JOINED ROOM
+        socket.on('joinedRoom', (data) => {
+            let username = data['username'];
+            let room = data['room'];
+            localStorage.setItem('username', username);
+            localStorage.setItem('room', room);
             window.location.href = '/lobby';
+        });
+        
+        // NOT FOUND
+        socket.on('roomError', (data) => {
+            document.getElementById('notFound').innerText = data['error'];
+            document.getElementById('notFound').style.display = 'block';
         });
 
     </script>
