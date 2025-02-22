@@ -1,0 +1,10 @@
+/* Import styles from index.css */
+@import url('index.css');
+
+.box {
+    max-width: 100vw;
+    width: 100%;
+    margin: 0 auto; /* Center the box */
+    padding: 10px;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
