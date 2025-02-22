@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heimatbrot</title>
+    <title>MemeBattle</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='lobby.css') }}">
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 </head>
@@ -37,11 +37,23 @@
             roomsReady = data.roomsReady;
             playerCount = roomsReady.length;
             readyCount = roomsReady.filter(player => player.ready).length;
+            username = localStorage.getItem('username');
 
             document.getElementById('username').innerText = `Playing as: ${localStorage.getItem('username')}`;
             document.getElementById('roomID').innerText = `Room ID: ${localStorage.getItem('room')}`;
             document.getElementById('players').innerText = `Total Players: ${playerCount} (min 3)`;
             document.getElementById('readyPlayers').innerText = `Ready: ${readyCount} / ${playerCount}`;
+
+            // Check if the current user is ready and update the button text accordingly
+            let currentUser = roomsReady.find(player => player.username === username);
+            if (currentUser) {
+                let readyButton = document.getElementById('readyButton');
+                if (currentUser.ready) {
+                    readyButton.innerText = 'Remove Ready';
+                } else {
+                    readyButton.innerText = 'Set Ready';
+                }
+            }
 
             var playersListDiv = document.getElementById('playersList');
             playersListDiv.innerHTML = ''; // Clear the existing content
@@ -62,6 +74,22 @@
             localStorage.removeItem('username');
             window.location.href = '/';
         }
+    
+        // SET READY
+        function setReady() {
+            let room = localStorage.getItem('room');
+            let username = localStorage.getItem('username');
+            socket.emit('setReady', {'room': room, 'username': username});
+        }
+        
+        // START GAME
+        socket.on('startGame', (data) => {
+            let room = localStorage.getItem('room');
+            if (data['room'] === room) {
+                window.location.href = '/createMeme';
+            }
+        });
+    
     </script>
 </body>
 </html>

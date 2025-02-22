@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MemeBattle</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lobby.css') }}">
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Create Meme</h1>
+    <div class="box">
+        <h2></h2>
+        <img id="image">
+        <div id="inputs"></div>
+    </div>
+
+    <script>
+        var socket = io();
+
+        // ASK FOR TEMPLATE
+        window.onload = function() {
+            let room = localStorage.getItem('room');
+            socket.emit('getTemplate', {'room': room});
+        }
+
+        // RECEIVE TEMPLATE
+        socket.on('sendTemplate', function(data) {
+            let template = data.templates;
+            document.getElementById('image').src = template.url;
+
+            // Create text input boxes based on box_count
+            let inputsDiv = document.getElementById('inputs');
+            inputsDiv.innerHTML = ''; // Clear any existing inputs
+            for (let i = 0; i < template.box_count; i++) {
+                let input = document.createElement('input');
+                input.type = 'text';
+                input.id = `input${i}`;
+                input.placeholder = `Text ${i + 1}`;
+                inputsDiv.appendChild(input);
+            }
+        });
+    </script>
+</body>
+</html>

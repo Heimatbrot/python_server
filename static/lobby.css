@@ -1,20 +1,6 @@
 /* Import styles from index.css */
 @import url('index.css');
 
-/* Add any additional styles specific to the lobby page below */
-.readyButton {
-    background-color: red;
-    color: white; /* Optional: Set the text color to white for better contrast */
-    border: none; /* Optional: Remove the border */
-    padding: 10px 20px; /* Optional: Add some padding */
-    font-size: 16px; /* Optional: Set the font size */
-    cursor: pointer; /* Optional: Change the cursor to a pointer */
-}
-
-.readyButton:hover {
-    background-color: rgb(236, 129, 129);
-}
-
 .playersListElement {
     display: inline-block;
     background-color: #ffffff;

@@ -1,8 +1,9 @@
 import os
 import random
+import requests
+import time
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room
-import time
 
 app = Flask(__name__, template_folder='frontend')
 app.config['SECRET_KEY'] = 'your_secret_key'
@@ -22,6 +23,7 @@ def createMeme():
 
 ## ROOM VARIABLES
 roomsReady = {} # {'8241': [{'username': 'fdsa', 'ready': False}], '2882': []}
+roomsPlaying = {} # {'8241': template, '2882': templates} Rooms actively playing as key, and all templates shuffled
 
 ## CREATE ROOM
 def generate_unique_room_id():
@@ -65,7 +67,6 @@ def joinRoom(data):
 ## ASK UPDATE ROOM
 @socketio.on('askUpdateRoom')
 def askUpdateRoom(data):
-    print(data)
     join_room(data['room'])
     room = data['room']
     socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]}, to=room)
@@ -78,6 +79,44 @@ def leaveRoom(data):
     roomsReady[room] = [player for player in roomsReady[room] if player['username'] != username]
     socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]}, to=room)
     leave_room(room)
+
+## START
+@socketio.on('getTemplate')
+def getTemplate(data):
+    print('getTemplate')
+    room = data['room']
+    socketio.emit('sendTemplate', {'room': room, 'templates': roomsPlaying[room][0]}, to=request.sid)
+
+## PULL TEMPLATES FROM API
+def getTemplates(room):
+    response = requests.get('https://api.imgflip.com/get_memes')
+    if response.status_code == 200:
+        data = response.json()
+        if data['success']:
+            memes = data['data']['memes']
+            random.shuffle(memes)  # Shuffle the list of memes
+            roomsPlaying[room] = memes  # Store the shuffled list in roomsPlaying
+            socketio.emit('startGame', {'room': room}, to=room)
+        else:
+            print("Failed to retrieve memes: API response was not successful")
+    else:
+        print(f"Failed to retrieve memes: HTTP {response.status_code}")
+
+## SET READY
+@socketio.on('setReady')
+def setReady(data):
+    room = data['room']
+    username = data['username']
+    for player in roomsReady[room]:
+        if player['username'] == username:
+            player['ready'] = not player['ready']
+    socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]}, to=room)
+    if len(roomsReady[room]) >= 3 and all([player['ready'] for player in roomsReady[room]]):
+        getTemplates(room)
+
+
+
+## CREATE MEME
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
