@@ -1,6 +1,7 @@
 import os
 import random
 import requests
+import copy
 import time
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, join_room, leave_room
@@ -22,8 +23,24 @@ def createMeme():
     return render_template('createMeme.html')
 
 ## ROOM VARIABLES
-roomsReady = {} # {'8241': [{'username': 'fdsa', 'ready': False}], '2882': []}
+roomsReady = {} # {'8241': [{'username': 'fdsa', 'ready': False, 'meme':url, 'submitted':True/False}], '2882': []}
 roomsPlaying = {} # {'8241': template, '2882': templates} Rooms actively playing as key, and all templates shuffled
+
+
+## Create Meme with var args
+def createMeme(templateID, *args):
+    boxes = ""
+    for i, arg in enumerate(args):
+        boxes += f'&boxes[{i}][text]={arg}'
+    response = requests.get(f'https://api.imgflip.com/caption_image?username=memebattle2&password=vannub-pefcy0-jiHdac&template_id={templateID}{boxes}')
+    if response.status_code == 200:
+        data = response.json()
+        if data['success']:
+            return data['data']['url']
+        else:
+            print("Failed to retrieve meme: API response was not successful")
+    else:
+        print(f"Failed to retrieve meme: HTTP {response.status_code}")
 
 ## CREATE ROOM
 def generate_unique_room_id():
@@ -37,7 +54,7 @@ def generate_unique_room_id():
 def createRoom(data):
     room = generate_unique_room_id()
     username = data['username']
-    roomsReady[room].append({'username': username, 'ready': False})
+    roomsReady[room].append({'username': username, 'ready': False, 'meme': '', 'submitted': False})
     join_room(room)
     socketio.emit('joinedRoom', {'room': room, 'username': username}, to=request.sid)
 
@@ -59,7 +76,7 @@ def joinRoom(data):
     if is_username_taken(username, room):
         socketio.emit('roomError', {'room': room, 'error': 'Username already taken!'}, to=request.sid)
         return
-    roomsReady[room].append({'username': username, 'ready': False})
+    roomsReady[room].append({'username': username, 'ready': False, 'meme': '', 'submitted': False})
     join_room(room)
     socketio.emit('joinedRoom', {'room': room, 'username': username}, to=request.sid)
     socketio.emit('updateRoom', {'room': room, 'roomsReady': roomsReady[room]},to=room)
@@ -85,6 +102,8 @@ def leaveRoom(data):
 def getTemplate(data):
     print('getTemplate')
     room = data['room']
+    templatetexts = [f'Text {i+1}' for i in range(roomsPlaying[room][0]['box_count'])]
+    roomsPlaying[room][0]['url'] = createMeme(roomsPlaying[room][0]['id'], *templatetexts)
     socketio.emit('sendTemplate', {'room': room, 'templates': roomsPlaying[room][0]}, to=request.sid)
 
 ## PULL TEMPLATES FROM API
@@ -114,9 +133,24 @@ def setReady(data):
     if len(roomsReady[room]) >= 3 and all([player['ready'] for player in roomsReady[room]]):
         getTemplates(room)
 
-
-
 ## CREATE MEME
+@socketio.on('submitMeme')
+def submitMeme(data):
+    room = data['room']
+    username = data['username']
+    input = data['inputs']
+    meme = createMeme(roomsPlaying[room][0]['id'], *input)
+    template = copy.deepcopy(roomsPlaying[room][0])
+    template['url'] = meme
+    for player in roomsReady[room]:
+        if player['username'] == username:
+            player['meme'] = meme
+            player['submitted'] = True
+            socketio.emit('sendTemplate', {'room': room, 'templates': template}, to=request.sid)
+        if all([player['submitted'] for player in roomsReady[room]]):
+            ## MAKE MEMES BE DISPLAYED AND REMOVE FIRST TEMPLATE
+            roomsPlaying[room].pop(0)
+            socketio.emit('allSubmitted', {'room': room}, to=room)
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

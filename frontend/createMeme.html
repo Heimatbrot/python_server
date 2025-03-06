@@ -13,6 +13,8 @@
         <h2></h2>
         <img id="image" class="image">
         <div id="inputs"></div>
+        <br>
+        <button onclick="submitMeme()">Submit</button>
     </div>
 
     <script>
@@ -40,6 +42,17 @@
                 inputsDiv.appendChild(input);
             }
         });
+
+        function submitMeme() {
+            let room = localStorage.getItem('room');
+            let username = localStorage.getItem('username');
+            let inputs = [];
+            for (let i = 0; i < document.getElementById('inputs').children.length; i++) {
+                inputs.push(document.getElementById(`input${i}`).value);
+            }
+            socket.emit('submitMeme', {'room': room, 'username': username, 'inputs': inputs});
+        }
+        
     </script>
 </body>
 </html>
