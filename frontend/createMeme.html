@@ -10,15 +10,20 @@
 <body>
     <h1>Create Meme</h1>
     <div class="box">
-        <h2></h2>
         <img id="image" class="image">
         <div id="inputs"></div>
         <br>
         <button onclick="submitMeme()">Submit</button>
+        <h3>TIME REMAINING</h3>
+        <div id="loadingBarContainer">
+            <div id="loadingBar"></div>
+        </div>
     </div>
 
     <script>
         var socket = io();
+        var currentTemplateID = localStorage.getItem('currentTemplateID');
+        var loadingBarInterval;
 
         // ASK FOR TEMPLATE
         window.onload = function() {
@@ -31,28 +36,51 @@
             let template = data.templates;
             document.getElementById('image').src = template.url;
 
-            // Create text input boxes based on box_count
-            let inputsDiv = document.getElementById('inputs');
-            inputsDiv.innerHTML = ''; // Clear any existing inputs
-            for (let i = 0; i < template.box_count; i++) {
-                let input = document.createElement('input');
-                input.type = 'text';
-                input.id = `input${i}`;
-                input.placeholder = `Text ${i + 1}`;
-                inputsDiv.appendChild(input);
+            // Check if the templateID has changed
+            if (template.id !== currentTemplateID) {
+                currentTemplateID = template.id;
+                localStorage.setItem('currentTemplateID', template.id);
+
+                // Create text input boxes based on box_count
+                let inputsDiv = document.getElementById('inputs');
+                inputsDiv.innerHTML = ''; // Clear any existing inputs
+                for (let i = 0; i < template.box_count; i++) {
+                    let input = document.createElement('input');
+                    input.type = 'text';
+                    input.id = `input${i}`;
+                    input.placeholder = `Text ${i + 1}`;
+                    inputsDiv.appendChild(input);
+                }
+
+                // Restart the loading bar
+                startLoadingBar();
             }
         });
 
+        function startLoadingBar() {
+            clearInterval(loadingBarInterval);
+            let loadingBar = document.getElementById('loadingBar');
+            loadingBar.style.width = '0%';
+            let width = 0;
+            loadingBarInterval = setInterval(function() {
+                if (width >= 100) {
+                    clearInterval(loadingBarInterval);
+                    submitMeme();
+                } else {
+                    width++;
+                    loadingBar.style.width = width + '%';
+                }
+            }, 600); // 600ms * 100 = 60 seconds
+        }
+
         function submitMeme() {
             let room = localStorage.getItem('room');
-            let username = localStorage.getItem('username');
             let inputs = [];
             for (let i = 0; i < document.getElementById('inputs').children.length; i++) {
                 inputs.push(document.getElementById(`input${i}`).value);
             }
-            socket.emit('submitMeme', {'room': room, 'username': username, 'inputs': inputs});
+            socket.emit('submitMeme', {'room': room, 'inputs': inputs});
         }
-        
     </script>
 </body>
 </html>
