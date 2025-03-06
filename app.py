@@ -148,7 +148,7 @@ def submitMeme(data):
             player['submitted'] = True
             socketio.emit('sendTemplate', {'room': room, 'templates': template}, to=request.sid)
         if all([player['submitted'] for player in roomsReady[room]]):
-            ## MAKE MEMES BE DISPLAYED AND REMOVE FIRST TEMPLATE
+            ## GO TO VOTING AND REMOVE FIRST TEMPLATE
             roomsPlaying[room].pop(0)
             socketio.emit('allSubmitted', {'room': room}, to=room)
 
